@@ -6,6 +6,7 @@ import time
 import threading
 from datetime import datetime, timedelta
 
+
 AMOUNT_BILLION = 1000000000
 class StrategyBase():
     def __init__(self):
