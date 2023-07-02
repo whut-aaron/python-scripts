@@ -13,10 +13,10 @@ print("----------开始配置目标机器信----------")
 #ips = input("主机IP:")
 #user = input("主机账号:")
 #password = getpass.getpass("主机密码:")
-user = "pengshenglong"
+user = "zhangzzgo"
 ips = "59.36.23.197"
 password = "05f8f4c33ef25eda46fc"
-port = 6688
+port = 16888
 class Tools(object):
     def __init__(self, user, password, port, ips):
         self.user = user
@@ -27,7 +27,8 @@ class Tools(object):
         try:
             self.ssh = paramiko.SSHClient()
             self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            self.ssh.connect(self.ip, self.port, self.user, self.password)
+            key = paramiko.RSAKey.from_private_key_file("D:\\flash\\zhangzzgo")
+            self.ssh.connect(self.ip, self.port, self.user, pkey=key)
             print("----------连接已建立-----------------")
         except Exception as e:
             print("未能连接到主机")
@@ -38,47 +39,77 @@ class Tools(object):
     def input(self):
 #        self.local_file_abs = 
 #        self.remote_file_abs = input("远程文件的绝对路径:>>")
-        self.sse_price_local_file_abs = "G:\\md\\price\\sse_price_" + trade_date.strftime("%Y%m%d") + ".tar.gz"
-        self.sse_tbt_local_file_abs = "G:\\md\\price\\sse_tbt" + trade_date.strftime("%Y%m%d") + ".tar.gz"
-        self.sze_price_local_file_abs = "G:\\md\\price\\sze_price_" + trade_date.strftime("%Y%m%d") + ".tar.gz"
-        self.sze_tbt_local_file_abs = "G:\\md\\price\\sze_tbt_" + trade_date.strftime("%Y%m%d") + ".tar.gz"
-        self.sse_price_remote_file_abs = "/list/10.36.120.83/market_data/sse_price_" + trade_date.strftime("%Y%m%d") + ".tar.gz"
-        self.sse_tbt_remote_file_abs = "/list/10.36.120.83/market_data/sse_tbt_" + trade_date.strftime("%Y%m%d") + ".tar.gz"
-        self.sze_price_remote_file_abs = "/list/10.36.120.83/market_data/sze_price_" + trade_date.strftime("%Y%m%d") + ".tar.gz"
-        self.sze_tbt_remote_file_abs = "/list/10.36.120.83/market_data/sze_tbt_" + trade_date.strftime("%Y%m%d") + ".tar.gz"
+        root_dir ="H:\\md\\price\\"
+        remote_root_dir="/list/120.83_flash/market_data/"
+        suffix_tar = trade_date.strftime("%Y%m%d") + ".tar.gz"
+        suffix_md5 = trade_date.strftime("%Y%m%d") + ".md5"
+        self.sse_price_local_file_abs = root_dir + "sse_price_" + suffix_tar
+        self.sse_tbt_local_file_abs = root_dir + "sse_tbt_" + suffix_tar
+        self.sze_price_local_file_abs = root_dir + "sze_price_" + suffix_tar
+        self.sze_tbt_local_file_abs = root_dir + "sze_tbt_" + suffix_tar
+
+        self.sze_price_md5_file =  root_dir + "sze_price_" + suffix_md5
+        self.sze_tbt_md5_file =  root_dir + "sze_tbt_" + suffix_md5
+        self.sse_price_md5_file =  root_dir + "sse_price_" + suffix_md5
+        self.sse_tbt_md5_file =  root_dir + "sse_tbt_" + suffix_md5
+
+        self.sse_price_remote_file_abs = remote_root_dir + "sse_price_" + suffix_tar
+        self.sse_tbt_remote_file_abs = remote_root_dir + "sse_tbt_" + suffix_tar
+        self.sze_price_remote_file_abs = remote_root_dir +"sze_price_" + suffix_tar
+        self.sze_tbt_remote_file_abs = remote_root_dir +"sze_tbt_" + suffix_tar
 
     def printTotals(transferred, toBeTransferred):
         print("Transferred: {0}\tOut of: {1}".format(transferred, toBeTransferred))
+
     def put(self):
         sftp = paramiko.SFTPClient.from_transport(self.ssh.get_transport())
         sftp = self.ssh.open_sftp()
         self.input()
         sftp.put(self.local_file_abs,self.remote_file_abs)
     def get(self):
+        now = datetime.now()
+        print(now.weekday())
+        if(now.weekday() >= 0 and now.weekday() < 5 and ((now.hour > 8 and now.hour < 16) or (now.hour == 8 and now.minute > 30))):
+            print("交易时间，停止下载")
+            exit()
+
         sftp = paramiko.SFTPClient.from_transport(self.ssh.get_transport())
         sftp = self.ssh.open_sftp()
         self.input()
         print("----------开始下载行情(" + trade_date.strftime("%Y%m%d") + ")------")
-        if not os.path.exists(self.sse_price_local_file_abs):
-            print("----------开始下载SSE tick 行情------")
-            sftp.get(self.sse_price_remote_file_abs,self.sse_price_local_file_abs)
-            print("----------SSE tick 下载行情完成------")
 
-        if not os.path.exists(self.sse_tbt_local_file_abs):
-            print("----------开始下载SSE 逐笔-----------")
-            sftp.get(self.sse_tbt_remote_file_abs, self.sse_tbt_local_file_abs)
-            print("----------SSE下载逐笔完成------------")
 
-        if not os.path.exists(self.sze_price_local_file_abs):
+        if not os.path.exists(self.sze_price_md5_file) :
             print("----------开始下载SZE tick行情--------")
             sftp.get(self.sze_price_remote_file_abs,self.sze_price_local_file_abs)
-            print("----------SZE下载行情完成-------------")
+            print("----------SZE tick 下载行情完成-------------")
 
-        if not os.path.exists(self.sze_tbt_local_file_abs):
+            fp = open(self.sze_price_md5_file,'w')
+            fp.close()
+
+        if not os.path.exists(self.sze_tbt_md5_file) :
             print("----------开始下载SZE逐笔-------------")
             sftp.get(self.sze_tbt_remote_file_abs, self.sze_tbt_local_file_abs)
             print("----------SZE逐笔下载完成-------------")
 
+            fp = open(self.sze_tbt_md5_file,'w')
+            fp.close()
+
+        if not os.path.exists(self.sse_price_md5_file):
+            print("----------开始下载SSE tick 行情------")
+            sftp.get(self.sse_price_remote_file_abs,self.sse_price_local_file_abs)
+            print("----------SSE tick 下载行情完成------")
+
+            fp = open(self.sse_price_md5_file,'w')
+            fp.close()
+
+        if not os.path.exists(self.sse_tbt_md5_file):
+            print("----------开始下载SSE 逐笔-----------")
+            sftp.get(self.sse_tbt_remote_file_abs, self.sse_tbt_local_file_abs)
+            print("----------SSE下载逐笔完成------------")
+
+            fp = open(self.sse_tbt_md5_file,'w')
+            fp.close()
         print("----------下载行情(" + trade_date.strftime("%Y%m%d") + ")完成------")
         # self.close()
 
